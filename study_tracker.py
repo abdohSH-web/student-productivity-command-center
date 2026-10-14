@@ -10,6 +10,32 @@ class StorageError(Exception):
 class ValidationError(Exception):
     """Raised when the data the user entered is not valid"""
 
+def _whole_number(value, field_name):
+    """Convert value to an int, but REJECT decimals instead of silently cutting them."""
+    try:
+        # float() accepts "60", "60.7", 60, 60.7 ... and fails on text like "abc"
+        number = float(value)
+    except (ValueError, TypeError) as e:
+        raise ValidationError(f"{field_name} must be a number, got {value!r}") from e
+
+    # 60.0 is fine (it IS a whole number), 60.7 is not
+    # (nan and inf also fail this check, so they're rejected too)
+    if not number.is_integer():
+        raise ValidationError(f"{field_name} must be a whole number, got {value!r}")
+
+    return int(number)
+
+def _clean_text(value, field_name):
+    """Return value as stripped text. Reject None and empty values."""
+    # Check None BEFORE str(): str(None) would give the text "None"
+    if value is None:
+        raise ValidationError(f"{field_name} is required.")
+
+    text = str(value).strip()
+    if not text:
+        raise ValidationError(f"{field_name} can't be empty.")
+    return text  
+
 class StudyTracker:
     def __init__(self, filepath):
         self.filepath = Path(filepath)
@@ -58,24 +84,19 @@ class StudyTracker:
         except(ValueError, TypeError) as e:
             raise ValidationError(f"Invalid date: {date!r}") from e
         # Textfileds: strip spaces and don't allow empty values
-        category = str(category).strip()
-        subject = str(subject).strip()
-        if (not category or not subject):
-            raise ValidationError("Category and Subject can't be empty.")
+        category = _clean_text(category, "Category")
+        subject = _clean_text(subject, "Subject")
+         # reject subjects made only of digits
+        if subject.isdigit():
+            raise ValidationError("Subject can't be only numbers. Describe what you studied.")
         # Minutes: Must be a whole number between 1 and MAX_MINUTES
-        try:
-            minutes = int(minutes)
-        except(ValueError, TypeError) as e:
-            raise ValidationError(f"Minutes must be a number, got {minutes!r}") from e
+        minutes = _whole_number(minutes, "Minutes")
         if not 1 <= minutes <= MAX_MINUTES:
             raise ValidationError(f"Minutes must be between 1 and {MAX_MINUTES}")
         #Understanding: Must be a number between 1 and 5
-        try:
-            understanding = int(understanding)
-        except(ValueError, TypeError) as e:
-            raise ValidationError(f"Understanding must be a number, got {understanding!r}") from e
-        if not 1<= understanding <=5 :
-            raise ValidationError(f"Understanding must be a number between 1 and 5")
+        understanding = _whole_number(understanding, "Understanding")
+        if not 1 <= understanding <= 5:
+            raise ValidationError("Understanding must be between 1 and 5")
         notes = str(notes).strip()
 
         # 2) build the new row (a one_row DataFrame)
@@ -102,7 +123,7 @@ if __name__ == "__main__":
     tracker = StudyTracker("data/test_log.csv")   # test file, not the real one
 
     # A valid session
-    tracker.add_session("2026-10-12", "Python", "file I/O", 60, 4, "Good session")
+    tracker.add_session("2026-10-12", "Python", "I/O", '60.0', 4, "good session")
     print(tracker.load())
 
     # An invalid session: our ValidationError should catch it

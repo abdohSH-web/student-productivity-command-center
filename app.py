@@ -3,6 +3,7 @@ from datetime import date
 
 from study_tracker import StudyTracker, StorageError, ValidationError, MAX_MINUTES
 from analytics import minutes_per_category, minutes_per_week, average_understanding
+from study_tracker import StudyTracker
 
 # Page setup
 st.set_page_config(page_title='Study Tracker', page_icon="📚")

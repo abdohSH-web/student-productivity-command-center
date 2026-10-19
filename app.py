@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import date
 
 from study_tracker import StudyTracker, StorageError, ValidationError, MAX_MINUTES
+from analytics import minutes_per_category, minutes_per_week, average_understanding
 
 # Page setup
 st.set_page_config(page_title='Study Tracker', page_icon="📚")
@@ -39,6 +40,23 @@ try:
         st.info("No session yet, log  your first one above")
     else:
         st.dataframe(df.sort_values("Date", ascending=False), hide_index=True)
+
+        st.subheader("Summary")
+
+        # two charts, side by side
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption("Minutes per category")
+            st.bar_chart(minutes_per_category(df))
+        with col2:
+            st.caption("Minutes per week")
+            st.bar_chart(minutes_per_week(df))
+
+        st.caption("Average understanding (1-5) per week")
+        st.bar_chart(average_understanding(df))
+
+        
+
 except StorageError as e:
     st.error(f"Could not load your log: {e}")
 

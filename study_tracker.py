@@ -1,8 +1,9 @@
 from pathlib import Path
 import pandas as pd
+from base_tracker import BaseTracker, ValidationError, MAX_MINUTES, whole_number, clean_text, clean_date
+
 
 COLUMNS = ['Date','Category','Subject','Time','Understanding','Notes']
-MAX_MINUTES = 24 * 60
 
 class StorageError(Exception):
     """Raised when the CSV file can't be read/written or has a wrong structure"""
@@ -79,10 +80,8 @@ class StudyTracker:
 
         # 1) Validate everything:
         # Date: Must be convertible to a real date
-        try: 
-            date = pd.to_datetime(date)
-        except(ValueError, TypeError) as e:
-            raise ValidationError(f"Invalid date: {date!r}") from e
+        # The function clean_date() from base_tracker validate it
+        date = clean_date(date)
         # Textfileds: strip spaces and don't allow empty values
         category = _clean_text(category, "Category")
         subject = _clean_text(subject, "Subject")

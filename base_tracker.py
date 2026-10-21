@@ -8,6 +8,25 @@ class StorageError(Exception):
 class ValidationError(Exception):
     """Raised when the data the user entered is not valid"""
 
+MAX_MINUTES = 24 * 60
+
+# Shared sanity limit for calories in a single meal or a single workout
+MAX_CALORIES = 5000
+
+def clean_date(value):
+    """Convert value to a real date. Reject None, empty text, and invalid dates."""
+    if value is None:
+        raise ValidationError("Date can't be empty")
+    try:
+        result = pd.to_datetime(value)
+    except(ValueError, TypeError) as e:
+        raise ValidationError(f"Invalid date {value!r}") from e
+    if pd.isna(result):
+        raise ValidationError(f"Invalid date {value!r}")
+    return result
+
+
+
 # shated validation helpers
 def whole_number(value, field_name):
     """Convert value into an int, but reject any declaims instead of silently cutting them."""
@@ -41,17 +60,11 @@ class BaseTracker:
     DATE_COLUMN = 'Date'
 
     def __init__(self, filepath):
-    # If a child class forgets to define COLUMNS, fail loudly now
-    # instead of creating a broken CSV file later.
-     if not self.COLUMNS:
-        raise NotImplementedError(
-            f"{type(self).__name__} must define its own COLUMNS list."
-        )
-
-        # Outside the if: this must run for EVERY tracker
-        self.filepath = Path(filepath)
-
-
+        # If a child class forgets to define COLUMNS, fail loudly now
+           # instead of creating a broken CSV file later.
+       if not self.COLUMNS:
+           raise NotImplementedError(f"{type(self).__name__} must define its own COLUMNS list.")
+       self.filepath = Path(filepath)
 
     def load(self):
         """Return the log as a DataFrame. Create the file on first run."""

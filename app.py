@@ -1,11 +1,12 @@
 import streamlit as st
 from datetime import date
+import pandas as pd
 
 from base_tracker import StorageError, ValidationError, MAX_MINUTES, MAX_CALORIES
 from study_tracker import StudyTracker
 from workout_tracker import WorkoutTracker
 from meal_tracker import MealTracker
-from analytics import minutes_per_category, minutes_per_week, average_understanding
+from analytics import minutes_per_category, minutes_per_week, average_understanding, total_per_period, filter_recent, activity_summary, intake_vs_burn
 
 
 
@@ -68,6 +69,8 @@ def study_tab():
 
 ACTIVITIES = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Cardio", "Other"]
 MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snack"]
+PERIOD_DAYS = {"Last 7 days": 7, "Last 30 days": 30, "All time": None}
+
 
 workout_tracker = WorkoutTracker("data/workout_log.csv")
 meal_tracker = MealTracker("data/meals_log.csv")
@@ -115,7 +118,17 @@ def workout_tab():
                 st.error(f"Storage problem: {e}")
 
         st.subheader("Your workouts")
-        show_log(workout_tracker, "No workouts yet. Log your first one above")
+        df = show_log(workout_tracker, "No workouts yet. Log your first one above")
+        if df is not None:
+            st.subheader("Summary")
+
+            period = st.radio("Period", list(PERIOD_DAYS), horizontal=True, key="w_period")
+            recent = filter_recent(df, PERIOD_DAYS[period])
+
+            st.dataframe(activity_summary(recent))
+
+            st.caption("Minutes per week")
+            st.bar_chart(total_per_period(df, "Time", "W"))
 
 def meals_tab():
     st.set_page_config(page_title='Meals Tracker', page_icon="🍽️")
@@ -140,10 +153,44 @@ def meals_tab():
                 st.error(f"Storage problem: {e}")
 
         st.subheader("Your meal")
-        show_log(meal_tracker, 'No meals yet. Log your first one above')
+        df = show_log(meal_tracker, 'No meals yet. Log your first one above')
+        if df is not None:
+            st.subheader("Summary")
+
+            today_total = df[df["Date"] == pd.Timestamp.today().normalize()]["Calories"].sum()
+            st.metric("Calories today", int(today_total))
+
+            st.caption("Calories per day")
+            st.bar_chart(total_per_period(df, "Calories", "D"))
+
+def overview_tab():
+    st.subheader("Calories: eaten vs burned in workouts")
+    st.caption(
+        "Burned calories are your own estimates and cover workouts only, and 0 means "
+        "'not tracked'. So this is a comparison, not a full energy balance."
+    )
+
+    view = st.radio("View", ["Weekly", "Monthly"], horizontal=True, key="o_view")
+    period = "W" if view == "Weekly" else "M"
+
+    try:
+        meals_df = meal_tracker.load()
+        workouts_df = workout_tracker.load()
+    except StorageError as e:
+        st.error(f"Could not load your logs: {e}")
+        return    #Stop here, nothing to draw without data
+
+    combined = intake_vs_burn(meals_df, workouts_df, period)
+    if combined.empty:
+        st.info("Log some meals or workouts first.")
+        return
+
+    st.bar_chart(combined)
+    st.dataframe(combined)
+
 
 # The page itself, three tabs, one function per tab
-tab_study, tab_workout, tab_meals = st.tabs(["📚 Study", "💪 Workout", "🍽️ Meals"])
+tab_study, tab_workout, tab_meals, tab_overview = st.tabs(["📚 Study", "💪 Workout", "🍽️ Meals", "📊 Overview"])
 
 with tab_study:
     study_tab()
@@ -151,6 +198,9 @@ with tab_workout:
     workout_tab()
 with tab_meals:
     meals_tab()
+with tab_overview:
+    overview_tab()
+
 
             
 

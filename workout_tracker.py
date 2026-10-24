@@ -1,5 +1,6 @@
 import pandas as pd 
 from base_tracker import BaseTracker, ValidationError, MAX_MINUTES, MAX_CALORIES, whole_number, clean_text, clean_date
+from storage import CSVStorage
 
 class WorkoutTracker(BaseTracker):
     COLUMNS = ['Date','Activity','Time','Intensity', 'Calories_burned', 'Notes']
@@ -33,7 +34,7 @@ class WorkoutTracker(BaseTracker):
         self.append_row(new_row)
 
 if __name__ == "__main__":
-    tracker = WorkoutTracker("./data/test_workout.csv")   # test file, not the real one
+    tracker = WorkoutTracker(CSVStorage("./data/test_workout.csv"))   # test file, not the real one
 
     tracker.add_workout("2026-10-20", "Chest", 60, 4, 800, "Bench press day")
     print(tracker.load())

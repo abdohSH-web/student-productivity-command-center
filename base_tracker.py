@@ -1,9 +1,9 @@
-from pathlib import Path
+from storage import Storage, StorageError
 import pandas as pd 
 
+
 # shared errors
-class StorageError(Exception):
-    """Raised when the CSV file can't be read/written or has a wrong structure"""
+
 
 class ValidationError(Exception):
     """Raised when the data the user entered is not valid"""
@@ -59,43 +59,44 @@ class BaseTracker:
     COLUMNS = []
     DATE_COLUMN = 'Date'
 
-    def __init__(self, filepath):
-        # If a child class forgets to define COLUMNS, fail loudly now
-           # instead of creating a broken CSV file later.
-       if not self.COLUMNS:
-           raise NotImplementedError(f"{type(self).__name__} must define its own COLUMNS list.")
-       self.filepath = Path(filepath)
+    def __init__(self, storage):
+        if not self.COLUMNS:
+            raise NotImplementedError(
+                f"{type(self).__name__} must define its own COLUMNS list"
+            )
+        # Clear error if someone still passes a file path
+        if not isinstance(storage, Storage):
+            raise TypeError(
+                "Pass a storage object, e.g. CSVStorage(data/log.csv), "
+                f"not {type(self).__name__}."
+            )
+        self.storage = storage
 
     def load(self):
-        """Return the log as a DataFrame. Create the file on first run."""
-        try: 
-            if not self.filepath.exists():
-                self.filepath.parent.mkdir(parents=True, exist_ok=True)
-                empty_df = pd.DataFrame(columns=self.COLUMNS)
-                empty_df.to_csv(self.filepath, index=False)
-                return empty_df
-            df = pd.read_csv(self.filepath)
+        """Return the log as a DataFrame. Create it on first run."""
+        raw = self.storage.read()
+        # first run, nothing stored yet. Start with an empty table
+        if raw is None:
+            empty_df = pd.DataFrame(columns=self.COLUMNS)
+            self.storage.write(empty_df)
+            return empty_df
+        # check structure first
+        if set(raw.columns) != set(self.COLUMNS):
+            raise StorageError(
+                f"Unexpected columns in {self.storage}. "
+                f"Expected {self.COLUMNS}, found {list(raw.columns)}"
+            )
 
-            # Check structure before touching any column
-            if set(df.columns) != set(self.COLUMNS):
-                raise StorageError(
-                    f"Unexpected columns in {self.filepath}. "
-                    f"Expected {self.COLUMNS}, found {list(df.columns)}"
-                )
-            df[self.DATE_COLUMN] = pd.to_datetime(df[self.DATE_COLUMN])
-
-        except(OSError, ValueError) as e:
-            raise StorageError(f"Could not read {self.filepath}: {e}") from e
-        return df[self.COLUMNS]
+        try:
+            raw[self.DATE_COLUMN] = pd.to_datetime(raw[self.DATE_COLUMN])
+        except ValueError as e:
+            raise StorageError(f"Invalid dates in {self.storage}: {e}") from e
+        return raw[self.COLUMNS]
 
     def save(self, df):
-        """Write the DataFrame to the csv file."""
-        try:
-            self.filepath.parent.mkdir(parents=True, exist_ok=True)
-            df.to_csv(self.filepath, index=False, date_format='%Y-%m-%d')
-        except OSError as e :
-            raise StorageError(f"Could not write {self.filepath}: {e}") from e
-
+        """Write the DataFrame to the storage."""
+        self.storage.write(df)
+       
     def append_row(self, new_row):
         """Add one already-validated row (a one-row DataFrame) and save."""
         df = self.load()

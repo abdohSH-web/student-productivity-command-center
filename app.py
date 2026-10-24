@@ -1,6 +1,8 @@
 import streamlit as st
 from datetime import date
 import pandas as pd
+import os
+from storage import CSVStorage, SessionStorage
 
 from base_tracker import StorageError, ValidationError, MAX_MINUTES, MAX_CALORIES
 from study_tracker import StudyTracker
@@ -8,11 +10,27 @@ from workout_tracker import WorkoutTracker
 from meal_tracker import MealTracker
 from analytics import minutes_per_category, minutes_per_week, average_understanding, total_per_period, filter_recent, activity_summary, intake_vs_burn
 
+st.set_page_config(page_title="Command Center", page_icon="📚")
+st.title("Student & Productivity Command Center")
+
+STORAGE_MODE = os.environ.get("STORAGE_MODE", 'cvs')
+
+def make_storage(name):
+    """Pick the storage for the tracker based on the mode."""
+    if STORAGE_MODE == "session":
+        return SessionStorage(st.session_state, name)
+    return CSVStorage(f"data/{name}.csv")
+
+if STORAGE_MODE == 'session':
+    st.info(
+        "Demo mode: your data is kept only in this browser session "
+        "and disappears when you refresh or close the page."
+    )
 
 
 CATEGORIES = ['Programming','English Language','Graphic Design','University','Other']
 
-tracker = StudyTracker('./data/study_log.csv')
+study_tracker = StudyTracker(make_storage('study_log'))
 
 def study_tab():
     # Page setup
@@ -33,7 +51,7 @@ def study_tab():
 
     if submitted:
         try:
-            tracker.add_session(session_date, category, subject, time, understanding, notes)
+            study_tracker.add_session(session_date, category, subject, time, understanding, notes)
             st.success("Saved sussion ✅")
         except ValidationError as e:
             st.warning(f"Please check your input: {e}")
@@ -42,7 +60,7 @@ def study_tab():
 
     st.subheader("Your session")
     try:
-        df = tracker.load()
+        df = study_tracker.load()
         if df.empty:
             st.info("No session yet, log  your first one above")
         else:
@@ -72,8 +90,8 @@ MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snack"]
 PERIOD_DAYS = {"Last 7 days": 7, "Last 30 days": 30, "All time": None}
 
 
-workout_tracker = WorkoutTracker("data/workout_log.csv")
-meal_tracker = MealTracker("data/meals_log.csv")
+workout_tracker = WorkoutTracker(make_storage("workout_log"))
+meal_tracker = MealTracker(make_storage("meals_log"))
 
 def show_log(tracker, empty_message):
     """Load a tracker's log and show it as a table, newest first.

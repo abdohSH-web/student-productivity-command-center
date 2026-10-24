@@ -20,13 +20,14 @@ def average_understanding(df):
     return df.groupby("Category")['Understanding'].mean().round(2)
 
 def _empty_series():
+    """An empty RESULT that is still a Series (with a datetime index)."""
     return pd.Series(dtype='int64', index=pd.DatetimeIndex([]))
 
 def total_per_period(df, value_col, period):
     """Sum value_col per day ("D"), week ("W"), or Month ("M")"""
     """Each period is labelled by its first day (Monday for week, First day for month)"""
     if df.empty:
-        return _empty_series
+        return _empty_series()
     period_start = df["Date"].dt.to_period(period).dt.start_time
     return df.groupby(period_start)[value_col].sum()
 

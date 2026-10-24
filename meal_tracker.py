@@ -1,5 +1,6 @@
 import pandas as pd
 from base_tracker import BaseTracker, ValidationError, MAX_CALORIES, whole_number, clean_text, clean_date
+from storage import CSVStorage
 
 class MealTracker(BaseTracker):
     COLUMNS = ['Date','Meal','Food','Calories']
@@ -23,7 +24,7 @@ class MealTracker(BaseTracker):
         self.append_row(new_row)
 
 if __name__ == "__main__":
-    tracker = MealTracker("data/test_meals.csv")   # test file, not the real one
+    tracker = MealTracker(CSVStorage("data/test_meals.csv"))   # test file, not the real one
 
     tracker.add_meal("2026-10-20", "Breakfast", "Eggs and bread", 450)
     tracker.add_meal("2026-10-20", "Lunch", "Chicken and rice", 700)

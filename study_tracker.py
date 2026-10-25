@@ -52,6 +52,12 @@ class StudyTracker(BaseTracker):
 
         self.append_row(new_row)
 
+    def add_from_row(self, row):
+        self.add_session(
+            row["Date"], row["Category"], row["Subject"],
+            row["Time"], row["Understanding"], row["Notes"],
+        )
+        
 
 if __name__ == "__main__":
     tracker = StudyTracker("data/test_log.csv")   # test file, not the real one

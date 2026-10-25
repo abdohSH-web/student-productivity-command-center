@@ -10,6 +10,9 @@ from workout_tracker import WorkoutTracker
 from meal_tracker import MealTracker
 from analytics import minutes_per_category, minutes_per_week, average_understanding, total_per_period, filter_recent, activity_summary, intake_vs_burn
 
+from sample_data import load_sample_data
+
+
 st.set_page_config(page_title="Command Center", page_icon="📚")
 st.title("Student & Productivity Command Center")
 
@@ -23,8 +26,8 @@ def make_storage(name):
 
 if STORAGE_MODE == 'session':
     st.info(
-        "Demo mode: your data is kept only in this browser session "
-        "and disappears when you refresh or close the page."
+        "Demo mode: your data is kept only in this browser session. "
+        "Use 'Backup & restore' in each tab to download it and keep it on your own device."
     )
 
 
@@ -32,7 +35,9 @@ CATEGORIES = ['Programming','English Language','Graphic Design','University','Ot
 
 study_tracker = StudyTracker(make_storage('study_log'))
 
+
 def study_tab():
+    backup_section(study_tracker, "Study", "study_log")
     # Page setup
     st.set_page_config(page_title='Study Tracker', page_icon="📚")
     st.title("Study Tracker 📚")
@@ -111,6 +116,7 @@ def show_log(tracker, empty_message):
     return df
 
 def workout_tab():
+    backup_section(workout_tracker, "Workouts", "workout_log")
     st.set_page_config(page_title='Workout Tracker', page_icon="🏋️")
     st.title("Workout Tracker 🏋️")
     st.subheader("Log a workout")
@@ -149,6 +155,7 @@ def workout_tab():
             st.bar_chart(total_per_period(df, "Time", "W"))
 
 def meals_tab():
+    backup_section(meal_tracker, "Meals", "meal_log")
     st.set_page_config(page_title='Meals Tracker', page_icon="🍽️")
     st.title("Workout Tracker 🍽️")
     st.subheader("Log a meal")
@@ -205,6 +212,41 @@ def overview_tab():
 
     st.bar_chart(combined)
     st.dataframe(combined)
+
+# Demo mode only: let visitors fill the app with example data
+if STORAGE_MODE == "session" and not st.session_state.get("sample_loaded"):
+    if st.button("Load sample data"):
+        load_sample_data(study_tracker, workout_tracker, meal_tracker)
+        st.session_state["sample_loaded"] = True   # hide the button: no duplicates
+
+
+
+def backup_section(tracker, label, key):
+    """Download/restore the data of one tracker."""
+    with st.expander(f"💾 Backup & restore: {label}"):
+        try:
+            data = tracker.export_csv()
+        except StorageError as e:
+            st.error(f"Could not prepare your data: {e}")
+            return
+
+        st.download_button(
+            "Download my data (CSV)", data,
+            file_name=f"{key}.csv", mime="text/csv", key=f"{key}_download", 
+        )
+
+        uploaded = st.file_uploader(
+            "Restore from a CSV you downloaded earlier (this replaces your current data)",
+            type="csv", key=f"{key}_upload",
+        )
+        if uploaded is not None and st.button("Restore", key=f"{key}_restore"):
+            try:
+                tracker.import_csv(uploaded)
+                st.success("Data restored ✅")
+            except (ValidationError, StorageError) as e:
+                st.warning(f"Could not restore {e}")
+
+
 
 
 # The page itself, three tabs, one function per tab

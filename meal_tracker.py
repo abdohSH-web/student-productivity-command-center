@@ -23,6 +23,10 @@ class MealTracker(BaseTracker):
 
         self.append_row(new_row)
 
+    def add_from_row(self, row):
+        self.add_meal(row["Date"], row["Meal"], row["Food"], row["Calories"])
+        
+
 if __name__ == "__main__":
     tracker = MealTracker(CSVStorage("data/test_meals.csv"))   # test file, not the real one
 

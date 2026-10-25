@@ -1,4 +1,4 @@
-from storage import Storage, StorageError
+from storage import Storage, StorageError, SessionStorage
 import pandas as pd 
 
 
@@ -12,6 +12,8 @@ MAX_MINUTES = 24 * 60
 
 # Shared sanity limit for calories in a single meal or a single workout
 MAX_CALORIES = 5000
+# Safety cap on uploaded files (re-checking every row takes time)
+MAX_IMPORT_ROWS = 2000
 
 def clean_date(value):
     """Convert value to a real date. Reject None, empty text, and invalid dates."""
@@ -105,6 +107,49 @@ class BaseTracker:
         else:
             df = pd.concat([df, new_row], ignore_index=True)
         self.save(df)
+
+    def export_csv(self):
+        """Return the log as csv text, ready for a download button."""
+        return self.load().to_csv(index=False, date_format="%Y-%m-%d")
+    
+    def add_from_row(self, row):
+        """Add one row (a dict) read from an uploaded file.
+        Each child class says how its columns map to its own add_* method."""
+        raise NotImplementedError(f"{type(self).__name__} must implement add_from_row.")
+
+    def import_csv(self, file):
+        """Replace the log with the rows of an uploaded CSV. All or nothing."""
+        #1) read the file, anything unreadable becomes a clear ValidationError.
+        try:
+            uploaded = pd.read_csv(file)
+        except (ValueError, OSError) as e:
+            raise ValidationError(f"This doesn't look like a valid CSV file: {e}") from e
+
+        #2) check its structure and size:
+        if set(uploaded.columns) != set(self.COLUMNS):
+            raise ValidationError(
+                f"Wrong columns. Expected {self.COLUMNS}, found {list(uploaded.columns)}."
+            )
+        if len(uploaded) > MAX_IMPORT_ROWS:
+            raise ValidationError(f"Too many rows. (Max {MAX_IMPORT_ROWS}).")
+        
+        #empty cells like empty notes, arrive as NaN; turn them into ""
+        uploaded = uploaded[self.COLUMNS].fillna("")
+
+        #3) re-validate every row in a temporary in-memory tracker of the same type
+        scratch = type(self)(SessionStorage({}, "import"))
+        for number, row in enumerate(uploaded.to_dict("records"), start=1):
+            try:
+                scratch.add_from_row(row)
+            except ValidationError as e:
+                raise ValidationError(f"Row {number}: {e}") from e
+
+        #4) now that everything passed, replace the data
+        self.save(scratch.load())
+
+
+
+
 
     
 

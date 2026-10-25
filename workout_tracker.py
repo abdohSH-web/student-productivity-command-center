@@ -33,6 +33,12 @@ class WorkoutTracker(BaseTracker):
 
         self.append_row(new_row)
 
+    def add_from_row(self, row):
+        self.add_workout(
+            row["Date"], row["Activity"], row["Time"], row["Intensity"],
+            notes=row["Notes"], calories_burned=row["Calories_burned"],
+        )
+
 if __name__ == "__main__":
     tracker = WorkoutTracker(CSVStorage("./data/test_workout.csv"))   # test file, not the real one
 

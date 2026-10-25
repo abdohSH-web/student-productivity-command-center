@@ -6,7 +6,7 @@ A mobile-friendly web app for tracking study sessions, workouts and meals, with 
 
 Open it and press **Load sample data** to see the analytics with three weeks of example entries.
 
-![Overview](screenshots/overview.png)
+![Overview](screenshot.overview.png)
 
 ## Features
 

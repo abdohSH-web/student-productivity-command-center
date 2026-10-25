@@ -6,7 +6,7 @@ A mobile-friendly web app for tracking study sessions, workouts and meals, with 
 
 Open it and press **Load sample data** to see the analytics with three weeks of example entries.
 
-![Overview](screenshot.overview.png)
+![Overview](screenshots/overview.png)
 
 ## Features
 
@@ -19,7 +19,7 @@ Open it and press **Load sample data** to see the analytics with three weeks of 
 
 | Study | Workout |
 |---|---|
-| ![Study](screenshots/study.png) | ![Workout](screenshots/workout.png) |
+| ![Study](screenshots/study.png) | ![Workout](screenshots/workouts.png) |
 
 ## Architecture
 
@@ -44,15 +44,20 @@ Open it and press **Load sample data** to see the analytics with three weeks of 
 
 ## Run locally
 
-```
+
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 streamlit run app.py
-```
+
 
 To try the demo mode locally, set the environment variable STORAGE_MODE=session before running.
 
 ## Tech stack
 
 Python, Streamlit, Pandas.
+
+## Screenshots
+| Study Summaries | Calories |
+|---|---|
+| ![Study Summaries](screenshots/study_summary.png) | ![Calories](screenshots/calories.png) |

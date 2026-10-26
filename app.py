@@ -8,7 +8,7 @@ from base_tracker import StorageError, ValidationError, MAX_MINUTES, MAX_CALORIE
 from study_tracker import StudyTracker
 from workout_tracker import WorkoutTracker
 from meal_tracker import MealTracker
-from analytics import minutes_per_category, minutes_per_week, average_understanding, total_per_period, filter_recent, activity_summary, intake_vs_burn
+from analytics import minutes_per_category, minutes_per_week, average_understanding, total_per_period, filter_recent, activity_summary, intake_vs_burn, total_per_period_by_group, average_per_period, compare_recent_windows
 
 from sample_data import load_sample_data
 
@@ -188,7 +188,7 @@ def meals_tab():
             st.caption("Calories per day")
             st.bar_chart(total_per_period(df, "Calories", "D"))
 
-def overview_tab():
+def calories_overview():
     st.subheader("Calories: eaten vs burned in workouts")
     st.caption(
         "Burned calories are your own estimates and cover workouts only, and 0 means "
@@ -212,6 +212,38 @@ def overview_tab():
 
     st.bar_chart(combined)
     st.dataframe(combined)
+
+def study_overview():
+    st.subheader("📚 Study trends")
+
+    try:
+        study_df = study_tracker.load()
+    except StorageError as e:
+        st.error(f"Could not load your study log: {e}")
+        return
+    if study_df.empty:
+        st.info("Log some study sessions to see your trends.")
+        return
+
+    #1: last 7 days vs the 7 days before
+    current, previous = compare_recent_windows(study_df, "Time", 7)
+    sessions = len(filter_recent(study_df, 7))
+
+    col1, col2 = st.columns(2)
+    # delta shows the change with an arrow (green up / red down)
+    col1.metric("Study minutes (Last 7 days)", current, delta=current - previous)
+    col2.metric("Sessions (Last 7 days)", sessions)
+
+    #2: weekly minutes, tracker by category
+    st.caption("Minutes per week, by category")
+    st.bar_chart(average_per_period(study_df, "Understanding", "W"))
+
+
+def overview_tab():
+    study_overview()
+    st.divider()
+    calories_overview()
+
 
 # Demo mode only: let visitors fill the app with example data
 if STORAGE_MODE == "session" and not st.session_state.get("sample_loaded"):
@@ -248,7 +280,6 @@ def backup_section(tracker, label, key):
 
 
 
-
 # The page itself, three tabs, one function per tab
 tab_study, tab_workout, tab_meals, tab_overview = st.tabs(["📚 Study", "💪 Workout", "🍽️ Meals", "📊 Overview"])
 
@@ -260,6 +291,7 @@ with tab_meals:
     meals_tab()
 with tab_overview:
     overview_tab()
+    
 
 
             

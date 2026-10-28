@@ -47,7 +47,7 @@ def study_tab():
     with st.form('study_form'):
         session_date = st.date_input("Date", value=date.today())
         category = st.selectbox("Category", CATEGORIES)
-        subject = st.text_input("Subject", placeholder='eg. Pandas grouby')
+        subject = st.text_input("Subject", placeholder='eg. Pandas groupby')
         time = st.number_input("Time in minutes", min_value=1, max_value=MAX_MINUTES, value=30, step=5)
         understanding = st.slider("How well you understand (1=Lost, 5=Got it)", 1, 5, 3)
         notes =  st.text_area('Notes (Optional)')
@@ -57,7 +57,7 @@ def study_tab():
     if submitted:
         try:
             study_tracker.add_session(session_date, category, subject, time, understanding, notes)
-            st.success("Saved sussion ✅")
+            st.success("Saved session ✅")
         except ValidationError as e:
             st.warning(f"Please check your input: {e}")
         except StorageError as e:

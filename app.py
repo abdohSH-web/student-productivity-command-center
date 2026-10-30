@@ -1,14 +1,16 @@
-import streamlit as st
-from datetime import date
-import pandas as pd
 import os
-from storage import CSVStorage, SessionStorage
+from datetime import date
 
+import pandas as pd
+import streamlit as st
+
+from storage import CSVStorage, SessionStorage
 from base_tracker import StorageError, ValidationError, MAX_MINUTES, MAX_CALORIES
 from study_tracker import StudyTracker
 from workout_tracker import WorkoutTracker
 from meal_tracker import MealTracker
-from analytics import minutes_per_category, minutes_per_week, average_understanding, total_per_period, filter_recent, activity_summary, intake_vs_burn, total_per_period_by_group, average_per_period, compare_recent_windows
+from analytics import minutes_per_category, minutes_per_week, average_understanding, total_per_period, filter_recent, activity_summary, intake_vs_burn, average_per_period, compare_recent_windows
+from option_list import OptionList
 
 from sample_data import load_sample_data
 
@@ -31,13 +33,50 @@ if STORAGE_MODE == 'session':
     )
 
 
+def manage_options(option_list, label, key):
+    """Let the user add or remove choices. Returns the current options, or None on error."""
+    try:
+        options = option_list.get()
+    except StorageError as e:
+        st.error(f"Could not load your {label}: {e}")
+        return None
+
+    with st.expander(f"⚙️ Manage {label}"):
+        # A small form of its own. clear_on_submit empties the text box after "Add"
+        with st.form(f"{key}_add_form", clear_on_submit=True):
+            new_name = st.text_input("New name", key=f"{key}_new_name")
+            added = st.form_submit_button("Add")
+        if added:
+            try:
+                option_list.add(new_name)
+                st.success("Added ✅")
+            except (StorageError, ValidationError) as e:
+                st.warning(str(e))
+        to_remove = st.selector("Remove one", options, key=f"{key}_remove_choice")
+        if st.button("Remove", key=f"{key}_remove_btn"):
+            try:
+                option_list.remove(to_remove)
+                st.success("Removed ✅")
+            except (ValidationError, StorageError) as e:
+                st.warning(str(e))
+
+        # Read again: the list may have just changed above
+    try:
+        return option_list.get()
+    except StorageError:
+        return options
+
+
 CATEGORIES = ['Programming','English Language','Graphic Design','University','Other']
 
 study_tracker = StudyTracker(make_storage('study_log'))
 
-
+category_options = OptionList(make_storage("study_options"), CATEGORIES)
 def study_tab():
     backup_section(study_tracker, "Study", "study_log")
+    categories = manage_options(category_options, "categories", "study_cat")
+    if categories is None:
+        return
     # Page setup
     st.set_page_config(page_title='Study Tracker', page_icon="📚")
     st.title("Study Tracker 📚")
@@ -46,7 +85,7 @@ def study_tab():
 
     with st.form('study_form'):
         session_date = st.date_input("Date", value=date.today())
-        category = st.selectbox("Category", CATEGORIES)
+        category = st.selectbox("Category", categories, key="s_category")
         subject = st.text_input("Subject", placeholder='eg. Pandas groupby')
         time = st.number_input("Time in minutes", min_value=1, max_value=MAX_MINUTES, value=30, step=5)
         understanding = st.slider("How well you understand (1=Lost, 5=Got it)", 1, 5, 3)
@@ -98,6 +137,10 @@ PERIOD_DAYS = {"Last 7 days": 7, "Last 30 days": 30, "All time": None}
 workout_tracker = WorkoutTracker(make_storage("workout_log"))
 meal_tracker = MealTracker(make_storage("meals_log"))
 
+activity_options = OptionList(make_storage("workout_options"), ACTIVITIES)
+meal_type_options = OptionList(make_storage("meal_options"), MEAL_TYPES)
+
+
 def show_log(tracker, empty_message):
     """Load a tracker's log and show it as a table, newest first.
     Returns the DataFrame (or None), so a caller can build summaries from it."""
@@ -117,13 +160,16 @@ def show_log(tracker, empty_message):
 
 def workout_tab():
     backup_section(workout_tracker, "Workouts", "workout_log")
+    activities = manage_options(activity_options, "activities", key="workout_act")
+    if activities is None:
+        return
     st.set_page_config(page_title='Workout Tracker', page_icon="🏋️")
     st.title("Workout Tracker 🏋️")
     st.subheader("Log a workout")
 
     with st.form("Workout_form"):
         w_date = st.date_input("Date",value=date.today(), key='w_date')
-        activity = st.selectbox("Activity", ACTIVITIES, key='w_activity')
+        activity = st.selectbox("Activity", activities, key='w_activity')
         minutes = st.number_input(
             "Minutes", min_value=1, max_value=MAX_MINUTES, value=45, step=5, key='w_minutes'
         )
@@ -156,13 +202,16 @@ def workout_tab():
 
 def meals_tab():
     backup_section(meal_tracker, "Meals", "meal_log")
+    meal_types = manage_options(meal_type_options, "meal types", key="meal_type")
+    if meal_types is None:
+        return
     st.set_page_config(page_title='Meals Tracker', page_icon="🍽️")
     st.title("Workout Tracker 🍽️")
     st.subheader("Log a meal")
 
     with st.form("meal_form"):
         m_date = st.date_input("Date", value=date.today(), key='m_date')
-        meal = st.selectbox("Meal", MEAL_TYPES, key='m_meal')
+        meal = st.selectbox("Meal", meal_types, key='m_meal')
         food = st.text_input('Food', placeholder='e.g Chicken and rice', key='m_food')
         calories = st.number_input(
             "Calories", min_value=1, max_value=MAX_CALORIES, value=500, step=10, key='m_calories'

@@ -1,6 +1,6 @@
 import pandas as pd
 
-# for studying tracker
+
 def minutes_per_category(df):
     """Total minutes for each category, biggest first."""
     if df.empty:
@@ -42,7 +42,7 @@ def filter_recent(df, days):
 def activity_summary(df):
     """Per activity, number of session, total minutes, and average intensity"""
     if df.empty:
-        return pd.DataFrame(columns=['Sessions','Minutes','Avg_intensiry'])
+        return pd.DataFrame(columns=['Sessions','Minutes','Avg_intensity'])
     return (
         df.groupby("Activity")
         .agg(

@@ -1,16 +1,9 @@
-from pathlib import Path
 import pandas as pd
 from base_tracker import BaseTracker, ValidationError, MAX_MINUTES, whole_number, clean_text, clean_date
 
 
-
-
 class StorageError(Exception):
     """Raised when the CSV file can't be read/written or has a wrong structure"""
-
-class ValidationError(Exception):
-    """Raised when the data the user entered is not valid"""
-
 
 class StudyTracker(BaseTracker):
     COLUMNS = ['Date','Category','Subject','Time','Understanding','Notes']

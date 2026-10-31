@@ -52,7 +52,7 @@ def manage_options(option_list, label, key):
                 st.success("Added ✅")
             except (StorageError, ValidationError) as e:
                 st.warning(str(e))
-        to_remove = st.selector("Remove one", options, key=f"{key}_remove_choice")
+        to_remove = st.selectbox("Remove one", options, key=f"{key}_remove_choice")
         if st.button("Remove", key=f"{key}_remove_btn"):
             try:
                 option_list.remove(to_remove)
